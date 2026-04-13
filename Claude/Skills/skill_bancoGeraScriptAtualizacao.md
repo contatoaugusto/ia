@@ -5,7 +5,7 @@
 Este skill aceita até dois parâmetros posicionais opcionais:
 
 ```
-/skill_bancoGeraSciptAtualizacao [branch_origem] [branch_destino]
+/skill_bancoGeraScriptAtualizacao [branch_origem] [branch_destino]
 ```
 
 | Parâmetro | Descrição | Default |
@@ -15,9 +15,9 @@ Este skill aceita até dois parâmetros posicionais opcionais:
 
 **Exemplos de uso:**
 ```
-/skill_bancoGeraSciptAtualizacao
-/skill_bancoGeraSciptAtualizacao feature/minha-branch
-/skill_bancoGeraSciptAtualizacao feature/minha-branch dev
+/skill_bancoGeraScriptAtualizacao
+/skill_bancoGeraScriptAtualizacao feature/minha-branch
+/skill_bancoGeraScriptAtualizacao feature/minha-branch dev
 ```
 
 Quando invocado, execute **exatamente** os passos abaixo sem pedir confirmação intermediária.
@@ -82,20 +82,19 @@ $outDir  = 'D:\Arquivos\Database'
 $hoje    = (Get-Date).ToString('yyyy-MM-dd')
 
 function Build-AlterScript {
-    param([string]$file, [string]$header)
+    param([string]$file)
     $content = Get-Content $file -Raw -Encoding UTF8
-    # CREATE PROC / CREATE PROCEDURE → CREATE OR ALTER PROCEDURE
+    # CREATE PROC / CREATE PROCEDURE -> CREATE OR ALTER PROCEDURE
     $content = $content -replace '(?i)\bCREATE\s+PROC(EDURE)?\b', 'CREATE OR ALTER PROCEDURE'
-    # CREATE FUNCTION / TRIGGER / VIEW → CREATE OR ALTER <tipo>
+    # CREATE FUNCTION / TRIGGER / VIEW -> CREATE OR ALTER <tipo>
     $content = $content -replace '(?i)\bCREATE\s+(FUNCTION|TRIGGER|VIEW)\b', 'CREATE OR ALTER $1'
-    return "-- $header`r`n$content`r`nGO`r`n"
+    return "$content`r`nGO`r`n"
 }
 
 function Build-NewTableScript {
     param([string]$file, [string]$schema, [string]$name)
     $content = Get-Content $file -Raw -Encoding UTF8
-    $block  = "-- Table: [$schema].[$name]`r`n"
-    $block += "IF OBJECT_ID('[$schema].[$name]', 'U') IS NULL`r`nBEGIN`r`n"
+    $block  = "IF OBJECT_ID('[$schema].[$name]', 'U') IS NULL`r`nBEGIN`r`n"
     $block += $content
     $block += "`r`nEND`r`nGO`r`n"
     return $block
@@ -115,22 +114,18 @@ function Build-NewTableScript {
 
 ### Estrutura do arquivo gerado
 
-```sql
--- ============================================================
--- Atualização: <Nome do Autor>
--- Data: <yyyy-mm-dd>
--- Branch origem:  <$BRANCH_ORIGEM>
--- Branch destino: <$BRANCH_DESTINO>
--- ============================================================
+O arquivo deve conter **apenas o SQL necessário**, sem comentários de cabeçalho, sem linha de identificação do objeto e sem qualquer texto adicional. Exemplo:
 
-USE [SGICEUB]   -- ou SGIBROKER, DWC, conforme o projeto
+```sql
+USE [SGICEUB]
 GO
 
--- <Tipo>: <schema>.<nome>
 CREATE OR ALTER PROCEDURE [schema].[nome]
 ...
 GO
 ```
+
+Quando o autor tiver objetos em mais de um banco, inserir `USE [banco]` + `GO` antes de cada grupo, sem nenhum comentário ao redor.
 
 ### Mapeamento de projeto para banco de dados
 
@@ -139,8 +134,6 @@ GO
 | `SGICEUB.Database/` | `USE [SGICEUB]` |
 | `SGIBROKER.Database/` | `USE [SGIBROKER]` |
 | `DWC/DWC.Database/` | `USE [DWC]` |
-
-Quando o autor tiver objetos em mais de um banco, separe com blocos `USE [banco] GO`.
 
 ---
 
@@ -177,3 +170,4 @@ Exiba uma tabela com:
 - Arquivos `.cs` de assemblies CLR **não podem ser deployados como SQL** — incluir comentário no script avisando que o assembly precisa ser atualizado separadamente antes de executar as funções CLR.
 - Respeitar a **ordem de dependências** ao criar tabelas (tabelas pai antes das filhas com FK).
 - O script gerado deve ser executável diretamente no **SQL Server Management Studio** ou via `sqlcmd`.
+- **Não adicionar nenhum comentário** no arquivo gerado — nem cabeçalho, nem identificação de objeto, nem separadores. Apenas o SQL puro.
