@@ -42,13 +42,16 @@ Comparando: origin/<$BRANCH_ORIGEM>  →  origin/<$BRANCH_DESTINO>
 
 ## 2. Identificar arquivos alterados
 
-Execute:
+Use `git diff` para comparar o **estado atual** dos arquivos entre as duas branches (captura tanto arquivos novos quanto modificados), e `git log` para atribuir o autor responsável por cada arquivo:
 
 ```bash
-git log origin/<$BRANCH_DESTINO>..origin/<$BRANCH_ORIGEM> --name-only --format="AUTHOR:%an" | awk '
-/^AUTHOR:/ { author=$0; sub(/^AUTHOR:/, "", author) }
-/\.sql$|\.cs$/ { print author ": " $0 }
-' | sort
+git diff --name-only origin/<$BRANCH_DESTINO> origin/<$BRANCH_ORIGEM> \
+  | grep -E '\.sql$|\.cs$' \
+  | while IFS= read -r file; do
+      author=$(git log origin/<$BRANCH_DESTINO>..origin/<$BRANCH_ORIGEM> --format="%an" -- "$file" | head -1)
+      [ -n "$author" ] && echo "$author: $file"
+    done \
+  | sort
 ```
 
 Se o resultado estiver vazio, informe: _"Nenhum arquivo encontrado entre as branches informadas."_ e encerre.
